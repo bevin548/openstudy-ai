@@ -1,34 +1,58 @@
 import streamlit as st
+import anthropic
 
 st.set_page_config(
     page_title="OpenStudy AI",
-    page_icon="📚",
-    layout="centered"
+    page_icon="📚"
 )
 
 st.title("📚 OpenStudy AI")
-st.write("Your open-source AI study assistant")
+st.write("Your open-source Claude-powered study assistant")
 
-st.divider()
+api_key = st.secrets.get("ANTHROPIC_API_KEY")
+
+if not api_key:
+    st.warning("Claude API key is not configured yet.")
+    st.info("Add ANTHROPIC_API_KEY to Streamlit Secrets to enable AI features.")
+    st.stop()
+
+client = anthropic.Anthropic(api_key=api_key)
 
 topic = st.text_input(
-    "What topic do you want to study?",
+    "What do you want to study?",
     placeholder="Example: Python, Mathematics, Biology..."
 )
 
-if st.button("Create Study Guide"):
+if st.button("Ask Claude"):
     if topic:
-        st.subheader(f"📖 Study Guide: {topic}")
+        with st.spinner("Claude is creating your study guide..."):
+            response = client.messages.create(
+                model="claude-sonnet-5",
+                max_tokens=1500,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"""
+Create a helpful study guide for: {topic}
 
-        st.write("### 1. Learn the basics")
-        st.write(f"Start by understanding the fundamental concepts of {topic}.")
+Include:
+1. Simple explanation
+2. Key concepts
+3. Three practice questions
+4. A short revision plan
 
-        st.write("### 2. Practice")
-        st.write(f"Create practice questions about {topic}.")
+Explain everything clearly for a student.
+"""
+                    }
+                ]
+            )
 
-        st.write("### 3. Review")
-        st.write(f"Review the important points you learned about {topic}.")
+        answer = next(
+            block.text
+            for block in response.content
+            if block.type == "text"
+        )
 
-        st.success("Study guide created!")
+        st.markdown(answer)
     else:
         st.warning("Please enter a topic first.")
